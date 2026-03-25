@@ -6,6 +6,14 @@ import visualization as vis
 import visualization as vis
 
 st.set_page_config(page_title="Analytics Dashboard", layout='wide')
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 1rem;
+            padding-bottom: 0.5rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 @st.cache_data
 def load_data(path):
@@ -47,11 +55,163 @@ tab = st.tabs([
 with tab[0]:
     st.header('Marketing Channel & Effiiency')
 
+    # =========================
+    # KPI SECTION 
+    # =========================
+
+    total_sessions = website_sessions['website_session_id'].nunique()
+
+    total_orders = orders['order_id'].nunique()
+
+    conversion_rate = total_orders / total_sessions
+
+    # Bounce Rate (sessions with only 1 pageview)
+    page_counts = website_pageviews.groupby('website_session_id').size()
+    bounce_sessions = page_counts[page_counts == 1].count()
+    bounce_rate = bounce_sessions / total_sessions
+
+    # Avg Revenue per Session
+    total_revenue = orders['price_usd'].sum()
+    avg_rev_per_session = total_revenue / total_sessions
+
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("Total Sessions", f"{total_sessions:,}")
+    col2.metric("Bounce Rate", f"{bounce_rate:.2%}")
+    col3.metric("Conversion Rate", f"{conversion_rate:.2%}")
+    col4.metric("Avg Revenue/Session", f"${avg_rev_per_session:.2f}")
+   
+    # =========================
+    # 🔥 DATA PREPARATION FIRST
+    # =========================
+
+    # Monthly summary
+    website_sessions["created_at"] = pd.to_datetime(website_sessions["created_at"])
+    orders["created_at"] = pd.to_datetime(orders["created_at"])
+
+    website_sessions["month"] = website_sessions["created_at"].dt.to_period("M").astype(str)
+    orders["month"] = orders["created_at"].dt.to_period("M").astype(str)
+
+    monthly_sessions = website_sessions.groupby("month").size().reset_index(name="sessions")
+    monthly_orders = orders.groupby("month").size().reset_index(name="orders")
+
+    monthly_summary = monthly_sessions.merge(monthly_orders, on="month", how="left").fillna(0)
+
+    # Channel summary
+    session_level = website_sessions.merge(orders, on="website_session_id", how="left")
+
+    channel_summary = session_level.groupby("utm_source").agg(
+        sessions=("website_session_id", "count"),
+        orders=("order_id", "count"),
+        revenue=("price_usd", "sum")
+    ).reset_index()
+
+    channel_summary["conversion_rate"] = channel_summary["orders"] / channel_summary["sessions"]
+
+    # Campaign summary
+    campaign_summary = session_level.groupby(["utm_campaign", "utm_source"]).agg(
+        sessions=("website_session_id", "count"),
+        orders=("order_id", "count")
+    ).reset_index()
+
+    # =========================
+    # 🎯 NOW CREATE LAYOUT
+    # =========================
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.plotly_chart(
+            vis.traffic_vs_orders(monthly_summary),
+            use_container_width=True
+            
+        )
+
+    
+
 
 
 with tab[1]:
     st.header('Conversion Funnel & UX Optimization')
 
+    # =========================
+    # KPI SECTION 🔥
+    # =========================
+    total_pageviews = website_pageviews.shape[0]
+
+    total_sessions = website_sessions['website_session_id'].nunique()
+    total_orders = orders['order_id'].nunique()
+
+    conversion_rate = total_orders / total_sessions
+    dropoff_rate = 1 - conversion_rate
+    retention_rate = conversion_rate
+
+    mobile_sessions = website_sessions[
+        website_sessions['device_type'] == 'mobile'
+    ]['website_session_id'].nunique()
+
+    desktop_sessions = website_sessions[
+        website_sessions['device_type'] == 'desktop'
+    ]['website_session_id'].nunique()
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    col1.metric("Total Page Views", f"{total_pageviews:,}")
+    col2.metric("Drop-off Rate", f"{dropoff_rate:.2%}")
+    col3.metric("Retention Rate", f"{retention_rate:.2%}")
+    col4.metric("Mobile Sessions", f"{mobile_sessions:,}")
+    col5.metric("Desktop Sessions", f"{desktop_sessions:,}")
+
+    # =========================
+    # FUNNEL DATA (FIXED 🔥)
+    # =========================
+    pages = [
+        '/home',
+        '/products',
+        '/cart',
+        '/shipping',
+        '/billing',
+        '/thank-you-for-your-order'
+    ]
+
+    stage_names = [
+        "Home",
+        "Product Page",
+        "Cart",
+        "Shipping",
+        "Billing",
+        "Order Complete"
+    ]
+
+    counts = []
+
+    for page in pages:
+        if page == '/billing':   # 🔥 FIX FOR BILLING
+            count = website_pageviews[
+                website_pageviews['pageview_url'].isin(['/billing', '/billing-2'])
+            ]['website_session_id'].nunique()
+        else:
+            count = website_pageviews[
+                website_pageviews['pageview_url'] == page
+            ]['website_session_id'].nunique()
+
+        counts.append(count)
+
+    funnel_df = pd.DataFrame({
+        "Stage": stage_names,
+        "Sessions": counts
+    })
+
+    # =========================
+    # DROP-OFF
+    # =========================
+    funnel_df["Previous_Stage"] = funnel_df["Sessions"].shift(1)
+    funnel_df["Drop_Off"] = funnel_df["Previous_Stage"] - funnel_df["Sessions"]
+    funnel_df["Drop_Off_Rate"] = funnel_df["Drop_Off"] / funnel_df["Previous_Stage"]
+
+
+    
 
 
 with tab[2]:
