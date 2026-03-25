@@ -3,7 +3,6 @@ import calendar
 import streamlit as st
 import pandas as pd
 import visualization as vis
-import visualization as vis
 
 st.set_page_config(page_title="Analytics Dashboard", layout='wide')
 st.markdown("""
@@ -323,20 +322,32 @@ with tab[3]:
         how='left'
     )
 
+    # Data prep
+    df = order_items.merge(
+        orders[["order_id", "user_id"]], on="order_id", how="left"
+    ).merge(
+        products[["product_id", "product_name"]], on="product_id", how="left"
+    )
+    user_product = df.groupby(["product_name", "user_id"]).size().reset_index(name="times_bought")
+    total_customers = user_product.groupby("product_name")["user_id"].nunique().reset_index(name="total_customers")
+    repeat_df = user_product[user_product["times_bought"] > 1]
+    repeat_customers = repeat_df.groupby("product_name")["user_id"].nunique().reset_index()
+    repeat_customers.columns = ["product_name", "repeat_customers"]
+    result = total_customers.merge(repeat_customers, on="product_name", how="left").fillna(0)
+    result["repeat_purchase_rate_%"] = (result["repeat_customers"] / result["total_customers"]) * 100
+
+    user_orders = orders.groupby("user_id")["order_id"].count().reset_index()
+    user_orders.columns = ["user_id", "total_orders"]
+    user_orders["user_type"] = "New User"
+    user_orders.loc[user_orders["total_orders"] > 1, "user_type"] = "Repeat User"
+    user_counts = user_orders["user_type"].value_counts()
 
     tab3_columns = st.columns([0.6,0.4],gap='large')
     with tab3_columns[0]:
         st.plotly_chart(vis.dist_time(repurchase_data))
         st.plotly_chart(vis.order_val_dist(orders_with_type))
 
-
-
-
-    
-   
-    
-
-            
-    
-
-        
+    # Layout: only inside columns, no standalone charts above
+    with tab3_columns[1]:
+        st.plotly_chart(vis.plot_repeat_purchase_rate(result), use_container_width=True, key="repeat_purchase_rate")
+        st.plotly_chart(vis.create_user_pie_chart(user_counts), use_container_width=True, key="user_pie_chart")

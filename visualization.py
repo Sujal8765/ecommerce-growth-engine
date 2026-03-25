@@ -58,3 +58,40 @@ def plot_refund_distribution(prod_info):
                  values='refund_amount_usd',
                  title='Refund Distribution by Product')
     return fig
+def plot_repeat_purchase_rate(result):
+    fig = px.bar(
+        result,
+        x='product_name',
+        y='repeat_purchase_rate_%',
+        title="Actual Repeat Purchase Rate per Product",
+        labels={
+            'product_name': 'Product Name',
+            'repeat_purchase_rate_%': 'Repeat Purchase Rate (%)'
+        }
+    )
+
+    fig.update_layout(
+        xaxis_tickangle=40,
+        template='plotly_white'
+    )
+
+    return fig
+
+
+def create_user_pie_chart(user_counts):
+    # user_counts should be a Series: index = labels, values = counts
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=user_counts.index,
+                values=user_counts.values,
+                textinfo='percent+label'
+            )
+        ]
+    )
+
+    fig.update_layout(
+        title="New vs Repeat Users"
+    )
+
+    return fig
