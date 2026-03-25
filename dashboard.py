@@ -4,7 +4,6 @@ import streamlit as st
 import pandas as pd
 import visualization as vis
 
-
 st.set_page_config(page_title="Analytics Dashboard", layout='wide')
 st.markdown("""
     <style>
