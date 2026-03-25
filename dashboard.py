@@ -126,6 +126,12 @@ with tab[0]:
             use_container_width=True
             
         )
+    with col2:
+        st.plotly_chart(
+            vis.traffic_vs_conversion(channel_summary),
+            use_container_width=True
+            
+        )
 
     
 
