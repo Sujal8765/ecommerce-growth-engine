@@ -1,6 +1,18 @@
-''' Graph Module '''
-import plotly.graph_objects as go
 import plotly.express as px
+import plotly.graph_objects as go
+import pandas as pd
+
+# 1. Traffic vs Orders
+def traffic_vs_orders(monthly_summary):
+    fig = px.line(
+        monthly_summary,
+        x="month",
+        y=["sessions", "orders"],
+        title="Traffic vs Orders Over Time"
+    )
+    fig.update_layout(height=180, margin=dict(t=40, b=10))
+    return fig
+
 
 def dist_time(data):
     fig = px.histogram(
