@@ -13,6 +13,22 @@ def traffic_vs_orders(monthly_summary):
     fig.update_layout(height=180, margin=dict(t=40, b=10))
     return fig
 
+# 2. Bubble Chart
+def traffic_vs_conversion(channel_summary):
+    fig = px.scatter(
+        channel_summary,
+        x="sessions",
+        y="conversion_rate",
+        size="revenue",
+        color="utm_source",
+        title="Traffic vs Conversion Rate"
+    )
+    fig.update_yaxes(tickformat=".0%")
+    fig.update_layout(height=180, margin=dict(t=40, b=10))
+    return fig
+
+
+
 
 def dist_time(data):
     fig = px.histogram(
