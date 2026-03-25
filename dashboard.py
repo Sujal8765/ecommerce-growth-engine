@@ -37,9 +37,11 @@ def load_data(path):
 
 
 # st.dataframe(order_item_refunds)
+# st.dataframe(order_item_refunds)
 
 # Setting Title
 st.title("Dashboard")
+
 
 
 # Module Wise Analysis
@@ -222,7 +224,7 @@ with tab[1]:
 with tab[2]:
     st.header('Product Performance & Refund Analysis')
     a,b,c,d=st.columns(4)
-    #KPI TOTAL NET REVENUE
+    #KPI 
     merged = pd.merge(order_items,order_item_refunds,on='order_item_id',how='left')
     sales_per_product = order_items.groupby('product_id')['price_usd'].sum().reset_index()
     sales_per_product.columns = ['product_id', 'sales_revenue']
@@ -241,20 +243,107 @@ with tab[2]:
 
     total_orders=order_items.order_item_id.nunique()
     d.metric( label="Total Orders",value=f'{total_orders:,.2f}')
+   
+    #TOTAL UNITS SOLD
+    product_sales =order_items.groupby("product_id").size().reset_index(name="total_units_sold").sort_values("total_units_sold", ascending=False)
     
-    refund_table=pd.read_csv('data/order_item_refunds.csv')
+    
+    #HEATMAP
+    df = order_items[['order_item_id', 'order_id', 'product_id']]
+
+    df = df.merge(
+    orders[['order_id', 'created_at']],
+    on='order_id',
+    how='left'
+    )
+    df = df.merge(
+    products[['product_id', 'product_name']],
+    on='product_id',
+    how='left'
+    )
+    refunds = order_item_refunds[['order_item_id', 'created_at']]
+
+    refunds = refunds.merge(
+    order_items[['order_item_id', 'product_id']],
+    on='order_item_id',
+    how='left'
+    )
+
+    refunds = refunds.merge(
+    products[['product_id', 'product_name']],
+    on='product_id',
+    how='left'
+    )
+    df['created_at'] = pd.to_datetime(df['created_at'])
+    df['month'] = df['created_at'].dt.to_period('M').astype(str)
+    refunds['created_at'] = pd.to_datetime(df['created_at'])
+    refunds['month'] = refunds['created_at'].dt.to_period('M').astype(str)
+    total_pm = df.groupby(['product_name', 'month']).size().reset_index(name='total_orders')
+    refund_pm = refunds.groupby(['product_name', 'month']).size().reset_index(name='refund_orders')
+    rate = total_pm.merge(refund_pm, on=['product_name', 'month'], how='left')
+    rate['refund_orders'] = rate['refund_orders'].fillna(0) 
+    rate['refund_pct'] = (rate['refund_orders'] / rate['total_orders']) * 100
+    rate['refund_pct'] = rate['refund_pct'].round(1)    
+    heat = rate.pivot(index='product_name',columns='month',values='refund_pct').fillna(0)
+    # TREND
     orders['created_at'] = pd.to_datetime(orders['created_at'], errors='coerce')
-    orders['month'] = orders['created_at'].dt.to_period('M').astype(str)
-    refund_table['created_at'] = pd.to_datetime(refund_table['created_at'], errors='coerce')
-    refund_table['month'] = refund_table['created_at'].dt.to_period('M').astype(str)
+    order_item_refunds['created_at'] = pd.to_datetime(order_item_refunds['created_at'], errors='coerce')
+    order_item_refunds['month'] = order_item_refunds['created_at'].dt.to_period('M').astype(str)
     revenue_trend = orders.groupby('month')['price_usd'].sum().reset_index(name='revenue')
 
     orders_trend = orders.groupby('month').size().reset_index(name='orders_count')
 
-    refund_trend = refund_table.groupby('month')['refund_amount_usd'].sum().reset_index(name='refund_amount')
+    refund_trend = order_item_refunds.groupby('month')['refund_amount_usd'].sum().reset_index(name='refund_amount')
 
     trend = revenue_trend.merge(orders_trend, on='month', how='left').merge(refund_trend, on='month', how='left').fillna(0)
+    tab2_columns = st.columns([0.7, 0.3], gap='large')
+    
+    with tab2_columns[0]:
+        st.plotly_chart(vis.plot_trend(trend))
+        
+    with tab2_columns[1]:
+        st.plotly_chart(vis.plot_total_units_sold(product_sales))
+    
+    
+    #HEATMAP
+    df = order_items[['order_item_id', 'order_id', 'product_id']]
 
+    df = df.merge(
+    orders[['order_id', 'created_at']],
+    on='order_id',
+    how='left'
+    )
+    df = df.merge(
+    products[['product_id', 'product_name']],
+    on='product_id',
+    how='left'
+    )
+    refunds = order_item_refunds[['order_item_id', 'created_at']]
+
+    refunds = refunds.merge(
+    order_items[['order_item_id', 'product_id']],
+    on='order_item_id',
+    how='left'
+    )
+
+    refunds = refunds.merge(
+    products[['product_id', 'product_name']],
+    on='product_id',
+    how='left'
+    )
+    df['created_at'] = pd.to_datetime(df['created_at'])
+    df['month'] = df['created_at'].dt.to_period('M').astype(str)
+    refunds['created_at'] = pd.to_datetime(df['created_at'])
+    refunds['month'] = refunds['created_at'].dt.to_period('M').astype(str)
+    total_pm = df.groupby(['product_name', 'month']).size().reset_index(name='total_orders')
+    refund_pm = refunds.groupby(['product_name', 'month']).size().reset_index(name='refund_orders')
+    rate = total_pm.merge(refund_pm, on=['product_name', 'month'], how='left')
+    rate['refund_orders'] = rate['refund_orders'].fillna(0) 
+    rate['refund_pct'] = (rate['refund_orders'] / rate['total_orders']) * 100
+    rate['refund_pct'] = rate['refund_pct'].round(1)    
+    heat = rate.pivot(index='product_name',columns='month',values='refund_pct').fillna(0)
+
+    
         
     #REFUND AMOUNT PER PRODUCT
     merged = pd.merge(order_items,order_item_refunds,on='order_item_id',how='left')
@@ -265,7 +354,7 @@ with tab[2]:
 
     tab2_columns = st.columns([0.7, 0.3], gap='large')
     with tab2_columns[0]:
-        st.plotly_chart(vis.plot_trend(trend))
+        st.plotly_chart(vis.plot_refund_heatmap(heat))
     with tab2_columns[1]:
         st.plotly_chart(vis.plot_refund_distribution(products_refund))
     
