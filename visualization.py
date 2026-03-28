@@ -39,6 +39,64 @@ def pie_chart(channel_summary, value, title):
     fig.update_layout(height=150, margin=dict(t=40, b=10))
     return fig
 
+# 4. Campaign Performance
+def traffic_performance(campaign_summary):
+    fig = px.bar(
+        campaign_summary,
+        y="utm_campaign",
+        x="sessions",
+        color="utm_source",
+        orientation="h",
+        title="Campaign Performance by Traffic"
+    )
+    fig.update_layout(height=180, margin=dict(t=40, b=10))
+    return fig
+
+# 1. Funnel Chart
+def plot_funnel(funnel_df):
+    fig = px.funnel(
+        funnel_df,
+        x="Sessions",
+        y="Stage",
+        title="Ecommerce Conversion Funnel"
+    )
+
+    fig.update_traces(
+        textposition="inside",
+        marker=dict(color="#52C7C7")
+    )
+
+    fig.update_layout(
+        height=400,
+        margin=dict(t=50, b=20)
+    )
+
+    return fig
+
+
+# 2. Sankey Diagram 🔥
+def plot_sankey(labels, source, target, values):
+    fig = go.Figure(data=[go.Sankey(
+        node=dict(
+            pad=20,
+            thickness=20,
+            label=labels
+        ),
+        link=dict(
+            source=source,
+            target=target,
+            value=values
+        )
+    )])
+
+    fig.update_layout(
+        title_text="Customer Journey Sankey Diagram",
+        font_size=12,
+        height=400
+    )
+
+    return fig
+
 
 
 def dist_time(data):
