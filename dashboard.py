@@ -147,6 +147,13 @@ with tab[0]:
 
         st.plotly_chart(fig, use_container_width=True)
 
+    with col4:
+        st.plotly_chart(
+            vis.traffic_performance(campaign_summary),
+            use_container_width=True
+            
+    )
+
 
 
 with tab[1]:
@@ -226,6 +233,50 @@ with tab[1]:
     funnel_df["Previous_Stage"] = funnel_df["Sessions"].shift(1)
     funnel_df["Drop_Off"] = funnel_df["Previous_Stage"] - funnel_df["Sessions"]
     funnel_df["Drop_Off_Rate"] = funnel_df["Drop_Off"] / funnel_df["Previous_Stage"]
+
+    # =========================
+    # 2 COLUMN GRAPH LAYOUT 🔥
+    # =========================
+    st.markdown("###")
+
+    col1, col2 = st.columns([1.2, 1])   # Funnel slightly bigger
+
+    with col1:
+        st.plotly_chart(
+            vis.plot_funnel(funnel_df),
+            use_container_width=True
+        )
+
+    with col2:
+        landing, product, cart, shipping, billing, order_complete = counts
+
+        labels = [
+            "Landing","Product","Cart","Shipping","Billing","Order Complete",
+            "Drop After Landing","Drop After Product","Drop After Cart",
+            "Drop After Shipping","Drop After Billing"
+        ]
+
+        source = [0,1,2,3,4, 0,1,2,3,4]
+        target = [1,2,3,4,5, 6,7,8,9,10]
+
+        values = [
+            min(landing, product),
+            cart,
+            shipping,
+            billing,
+            order_complete,
+            landing - min(landing, product),
+            product - cart,
+            cart - shipping,
+            shipping - billing,
+            billing - order_complete
+        ]
+
+        fig = vis.plot_sankey(labels, source, target, values)
+
+        fig.update_layout(height=400)  # match funnel height
+
+        st.plotly_chart(fig, use_container_width=True)
 
 
     
